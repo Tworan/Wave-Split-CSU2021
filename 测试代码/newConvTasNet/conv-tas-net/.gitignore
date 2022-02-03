@@ -1,4 +1,4 @@
-/output
-!/output/best.pth
+*.pth
+!best.pth
 *.npy
 *.ipynb
