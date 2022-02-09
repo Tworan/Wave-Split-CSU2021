@@ -2,3 +2,4 @@
 !best.pth
 *.npy
 *.ipynb
+*.wav
