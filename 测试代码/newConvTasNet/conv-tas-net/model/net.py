@@ -223,9 +223,9 @@ class ConvTasNet(nn.Module):
             input = np.zeros((1, dest_length), dtype=np.float32)
             input[0, :origin_length] = x
         else:
-            input = x
+            input = x.astype(np.float32)
         x = torch.from_numpy(x)
-        input = torch.from_numpy(input.reshape(1, 1, -1))
+        input = torch.from_numpy(input.reshape(1, 1, -1)).to(next(self.parameters()).device)
         output = self.forward(input)
         # 利用这一步改善语音质量,非常巧妙的一步
         output = output[:, :, :origin_length]
