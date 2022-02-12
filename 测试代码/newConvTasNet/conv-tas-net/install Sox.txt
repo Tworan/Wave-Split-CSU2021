@@ -1,0 +1,3 @@
+# conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+# use conda to install sox
+conda install -c conda-forge sox

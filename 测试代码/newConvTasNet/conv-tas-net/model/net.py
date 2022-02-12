@@ -90,9 +90,13 @@ class Decoder(nn.Module):
         '''
         super(Decoder, self).__init__()
         layers = []
-        for _ in range(layer_num - 1):
-            layers.append(nn.Conv1d(C * in_chan, C * in_chan, kernel_size=1, bias=False))
-        layers.append(nn.ConvTranspose1d(C * in_chan, C, kernel_size=kernel_size, stride=stride, bias=False))
+        in_chan = C * in_chan
+        if layer_num - 1:
+            layers.append(nn.Conv1d(in_chan, in_chan//16, kernel_size=1, bias=False))
+            in_chan = in_chan//16
+        for _ in range(layer_num - 2):
+            layers.append(nn.Conv1d(in_chan, in_chan, kernel_size=1, bias=False))
+        layers.append(nn.ConvTranspose1d(in_chan, C, kernel_size=kernel_size, stride=stride, bias=False))
         self.net = nn.Sequential(*layers)
 
     def forward(self, x):

@@ -18,28 +18,50 @@ MIN_LOUDNESS = -33.0
 
 
 class LibrimixTrainDataset(Data.Dataset):
-    def __init__(self, speech_path, noise_path, data_num=10000, sample_rate=8000, seg_len=4, train=True, sameS=True):
+    def __init__(self, speech_path, noise_path, data_num=10000, sample_rate=8000, seg_len=4, train=True, sameS=True,
+                 seed=520, val_type="1s1n+2s1n", ratio=1):
         '''
-
+        
         :param speech_path: speaker speech dir path
         :param noise_path: noise dir path
         :param data_num: number of data each epoch
         :param sample_rate:
         :param seg_len: the length of trained audio
+        :param train:
+        :param sameS: same speaker
+        :param seed: val dataset random seed
+        :param val_type: 1s1n,1s1n+2s1n,2s1n,used when val
+        :param ratio: num(2s1n)/num(1s1n) should be a positive integer
         '''
         self.speech_path = speech_path
         self.noise_path = noise_path
         self.data_num = data_num
         self.sample_rate = sample_rate
         self.seg_len = seg_len
+        self.train = train
         self.sameS = sameS  # 1s1n标签是否为两个相同的声音
+        self.seed = seed
+        self.val_type = val_type
         self.data_type = "train_" if train else "val_"
         self.count = 0  # number of data had been collated this epoch
-        self.mix_type = ["1s1n", "2s1n"]  # data mixture type
+        self.mix_type = []  # data mixture type
+        assert type(ratio) == int
+        assert ratio > 0
+        for i in range(ratio):
+            self.mix_type.append("2s1n")
+        self.mix_type.append("1s1n")
         self.speed_type = [0.8, 1.0, 1.2]  # noise speed
         self.utt_len = self.seg_len * self.sample_rate
         self.meter = pyln.Meter(self.sample_rate)  # loudness meter
         self.speech_list, self.noise_list = self.set_speech_list_and_noise_list()
+        # 验证集固定, 固定了随机数种子就固定了验证集
+        if not train:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
+            indexes = np.random.permutation(self.speech_list.shape[0])
+            self.speech_list = self.speech_list[indexes]
+            indexes = np.random.permutation(self.noise_list.shape[0])
+            self.noise_list = self.noise_list[indexes]
 
     def set_speech_list_and_noise_list(self):
         '''
@@ -81,7 +103,11 @@ class LibrimixTrainDataset(Data.Dataset):
         return self.data_num
 
     def __getitem__(self, idx):
-        mix_type = self.mix_type[random.randint(0, 1)]
+        mix_type = self.mix_type[random.randint(0, len(self.mix_type)-1)]
+        # val has 3types, 1s1n, 2s1n, both
+        if not self.train:
+            if self.val_type != "1s1n+2s1n":
+                mix_type = self.val_type
         if mix_type == "1s1n":
             if self.sameS:  # 1s1n return same speech label
                 mixture, source = self.get_1s1n_sameS(idx)
@@ -93,10 +119,17 @@ class LibrimixTrainDataset(Data.Dataset):
         # when count to self.data_num, shuffle the list
         if self.count == self.data_num:
             self.count = 0
-            indexes = np.random.permutation(self.speech_list.shape[0])
-            self.speech_list = self.speech_list[indexes]
-            indexes = np.random.permutation(self.noise_list.shape[0])
-            self.noise_list = self.noise_list[indexes]
+            # 下一次验证时，验证集保持一致
+            if not self.train:
+                random.seed(self.seed)
+                np.random.seed(self.seed)
+            # 训练时则打乱数据，打乱人语音与噪音的对应关系，相当于数据增强
+            else:
+                indexes = np.random.permutation(self.speech_list.shape[0])
+                self.speech_list = self.speech_list[indexes]
+                indexes = np.random.permutation(self.noise_list.shape[0])
+                self.noise_list = self.noise_list[indexes]
+
         return mixture.reshape(1, -1), source
 
     def get_1s1n(self, idx):
@@ -117,7 +150,7 @@ class LibrimixTrainDataset(Data.Dataset):
         # change the loudness according to the paper LibriMix
         speech = pyln.normalize.loudness(speech, loudness, dest_loudness)
         speech = self.check_clip(speech)
-        
+
         # get silent speaker
         silent_speaker = self.get_silent_speaker(speech)
 
@@ -138,7 +171,7 @@ class LibrimixTrainDataset(Data.Dataset):
         # change the loudness according to the paper LibriMix
         noise = pyln.normalize.loudness(noise, loudness, dest_loudness)
         noise = self.check_clip(noise)
-        
+
         mixture = torch.from_numpy(speech + noise)
         speech = torch.from_numpy(speech)
         silent_speaker = torch.from_numpy(silent_speaker)
@@ -163,7 +196,7 @@ class LibrimixTrainDataset(Data.Dataset):
         # change the loudness according to the paper LibriMix
         speech1 = pyln.normalize.loudness(speech1, loudness, dest_loudness)
         speech1 = self.check_clip(speech1)
-        
+
         # get speech2
         idx2 = random.randint(self.data_num, len(self.speech_list) - 1)
         basename = os.path.basename(self.speech_list[idx])
@@ -184,7 +217,7 @@ class LibrimixTrainDataset(Data.Dataset):
         # change the loudness according to the paper LibriMix
         speech2 = pyln.normalize.loudness(speech2, loudness, dest_loudness)
         speech2 = self.check_clip(speech2)
-        
+
         # get noise
         speed = self.speed_type[random.randint(0, 2)]
         fx = (AudioEffectsChain().speed(speed))  # change-speed function
@@ -202,7 +235,7 @@ class LibrimixTrainDataset(Data.Dataset):
         # change the loudness according to the paper LibriMix
         noise = pyln.normalize.loudness(noise, loudness, dest_loudness)
         noise = self.check_clip(noise)
-        
+
         mixture = torch.from_numpy(speech1 + speech2 + noise)
         speech1 = torch.from_numpy(speech1)
         speech2 = torch.from_numpy(speech2)
@@ -228,7 +261,7 @@ class LibrimixTrainDataset(Data.Dataset):
         # change the loudness according to the paper LibriMix
         speech = pyln.normalize.loudness(speech, loudness, dest_loudness)
         speech = self.check_clip(speech)
-        
+
         # get noise
         speed = self.speed_type[random.randint(0, 2)]
         fx = (AudioEffectsChain().speed(speed))  # change-speed function
@@ -246,7 +279,7 @@ class LibrimixTrainDataset(Data.Dataset):
         # change the loudness according to the paper LibriMix
         noise = pyln.normalize.loudness(noise, loudness, dest_loudness)
         noise = self.check_clip(noise)
-        
+
         mixture = torch.from_numpy(speech + noise)
         speech = torch.from_numpy(speech)
         source = torch.vstack((speech, speech))
@@ -264,13 +297,12 @@ class LibrimixTrainDataset(Data.Dataset):
         d = np.mean(speech ** 2) / (10 ** below)
         silent_speaker = np.random.normal(0, np.sqrt(d), size=speech.shape)
         return silent_speaker
-    
+
     def check_clip(self, src):
         if np.max(np.abs(src)) >= 1:
             src = src * 0.9 / np.max(np.abs(src))
         return src
 
-    
     # 用librosa重写速度反而更慢
     # def get_1s1n(self, idx):
     #     """

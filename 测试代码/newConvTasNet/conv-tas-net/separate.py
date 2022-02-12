@@ -7,29 +7,49 @@ from loss.pit_wrapper import PITLossWrapper
 from loss.sdr import PairwiseNegSDR
 import numpy as np
 
+SAMPLE_RATE = 16000
+# 模型超参数
+N = 512
+L = 32 if SAMPLE_RATE == 16000 else 16
+B = 128
+Sc = 128
+H = 512
+P = 3
+X = 8
+R = 3
+C = 2
+N_ED = 2
+mask_act = "relu"
+CHECKPOINTPATH = "origin+attention+2en+r2/best.pth"
+ATTENTION = [True, True]
 
-
-net = ConvTasNet(L=32)
-net.load_state_dict(torch.load("output/best.pth"))
-
-input,sr = sf.read("mixture.wav")
-y1, sr = sf.read("y1.wav")
-y2, sr = sf.read("y2.wav")
-y = np.vstack((y1,y2))
-# 一次只能喂一个数据     input:[T] ,output: [2,T]    ndarray
-out = net.separate(input)
-sf.write("out1.wav", out[0], 16000)
-sf.write("out2.wav", out[1], 16000)
-
-
+net = ConvTasNet(N, L, B, Sc, H, P, X, R, C, N_ED, mask_act, ATTENTION)
+net.load_state_dict(torch.load(CHECKPOINTPATH))
+net.eval()
+val_dataset = LibrimixTrainDataset(speech_path="D:/datasets/librispeech/LibriSpeech/dev-clean",
+                                   noise_path="D:/datasets/wham_noise/cv", data_num=200,
+                                   sample_rate=16000, seg_len=4,speech_type="2s1n",
+                                   train=False)
 loss_func = PITLossWrapper(PairwiseNegSDR("sisdr"),
                            pit_from='pw_mtx')
-out = torch.from_numpy(out.reshape(1,2,-1))
-y = torch.from_numpy(y.reshape(1,2,-1))
 
-# input [bs,1,T] output [bs,2,T]
-# when mixture is 1s1n, y provide 2 same speech
-loss = loss_func(out,y)
-print(loss)
+# 测试sdr
+# x, y = val_dataset[0]
+# x = x.reshape(1, 1, -1)
+# y = y.reshape(1, 2, -1)
+# out = net(x)
+# print(loss_func(out, y))
 
+''' 测试 '''
 
+x, y = val_dataset[160]
+x = x.numpy().reshape(-1)
+y = y.numpy().reshape(2, -1)
+tic = time.time()
+out = net.separate(x)
+print(time.time() - tic)
+sf.write("out1.wav", out[0], 16000)
+sf.write("out2.wav", out[1], 16000)
+sf.write("mixture.wav", x, 16000)
+sf.write("y1.wav", y[0], 16000)
+sf.write("y2.wav", y[1], 16000)
