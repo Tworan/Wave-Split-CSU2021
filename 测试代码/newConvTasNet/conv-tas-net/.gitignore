@@ -1,5 +1,0 @@
-*.pth
-!best.pth
-*.npy
-*.ipynb
-*.wav

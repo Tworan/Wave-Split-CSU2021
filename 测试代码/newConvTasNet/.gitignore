@@ -1,0 +1,5 @@
+*.wav
+*.npy
+*.pth
+/output
+/.ipynb_checkpoints
