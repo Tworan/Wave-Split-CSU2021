@@ -13,7 +13,8 @@ LibiriMix数据集通过结合LibriSpeech与Wham_noise数据集产生，因此�
 
 ## Conv-TasNet
 ### 训练
-- 在train.py中的parameters指定模型等参数，指定训练文件的保存路径
+- 在train.py中的parameters指定模型参数与数据集路径等，基本需要用到的参数都可以进行设置
+- 在train.py中还需额外指定保存路径，以便恢复训练和绘制训练历史损失等
 - 在draw_loss.ipynb指定训练文件的保存路径，查看训练与验证损失
 ### 验证
 - 在eval.py中指定训练文件的保存路径，然后指定数据集类型
