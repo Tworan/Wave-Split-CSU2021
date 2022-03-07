@@ -3,3 +3,4 @@
 *.pth
 /output
 /.ipynb_checkpoints
+/.idea
