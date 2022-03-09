@@ -8,7 +8,7 @@ import numpy as np
 
 
 class LibriMix(Data.Dataset):
-    def __init__(self, path_2s1n='', path_1s1n='', ratio=1, seg_len=4, sample_rate=16000):
+    def __init__(self, path_2s1n='', path_1s1n='', ratio=1, seg_len=4, sample_rate=16000, train=True):
         assert path_2s1n is not '' or path_1s1n is not ''
         self.path_2s1n = path_2s1n
         self.path_1s1n = path_1s1n
@@ -20,11 +20,12 @@ class LibriMix(Data.Dataset):
         self.seg_len = seg_len
         self.sample_rate = sample_rate
         self.utt_len = sample_rate * seg_len
+        self.cacheFile = 'train_speech_list.npy' if train else 'val_speech_list.npy'
         self.built_speech_list()
 
     def built_speech_list(self):
-        if os.path.exists('speech_list.npy'):
-            self.list = np.load('speech_list.npy')
+        if os.path.exists(self.cacheFile):
+            self.list = np.load(self.cacheFile,allow_pickle=True)
         else:
             list1 = glob.glob(os.path.join(self.path_2s1n, 'mix_both/*.wav'))
             list2 = glob.glob(os.path.join(self.path_1s1n, 'mix_both/*.wav'))
@@ -34,8 +35,10 @@ class LibriMix(Data.Dataset):
                 speech, sr = ta.load(filename)
                 if speech.size()[1] / sr < self.seg_len:
                     list.remove(filename)
-            self.list = np.random.shuffle(np.array(list))
-            np.save('speech_list.npy', self.list)
+            list = np.array(list)
+            np.random.shuffle(list)
+            self.list=list
+            np.save(self.cacheFile, self.list)
 
     def __len__(self):
         return len(self.list)
@@ -61,7 +64,7 @@ class LibriMix(Data.Dataset):
         s2 = ta.transforms.Resample(sr, self.sample_rate)(s2)
         s2 = s2[:, start:stop]
 
-        return mixture.reshape(1, -1), torch.vstack(s1, s2)
+        return mixture.reshape(1, -1), torch.vstack((s1, s2))
 
 
 if __name__ == '__main__':

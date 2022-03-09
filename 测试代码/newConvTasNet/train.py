@@ -1,5 +1,5 @@
 from model.net import ConvTasNet
-from librimix.librimix_dataset import LibrimixTrainDataset
+# from librimix.librimix_dataset import LibrimixTrainDataset
 from librimix.dataset import LibriMix
 import torch.utils.data as Data
 from loss.pit_wrapper import PITLossWrapper
@@ -12,9 +12,9 @@ import os
 
 def run_one_epoch(net, loss_func, optim, dataloader, print_interval):
     train_loss = 0
+    net.train()
     for step, (x, y) in enumerate(dataloader):
         torch.cuda.empty_cache()
-        net.train()
         x = x.cuda()
         y = y.cuda()
 
@@ -122,16 +122,16 @@ def built_dataloader(parameters):
     train_dataset = LibriMix(parameters["2s1n_train_path"], parameters["1s1n_train_path"],
                              sample_rate=parameters["sample_rate"], seg_len=parameters["seg_len"])
     val_dataset = LibriMix(parameters["2s1n_val_path"], parameters["1s1n_val_path"],
-                           sample_rate=parameters["sample_rate"], seg_len=parameters["seg_len"])
+                           sample_rate=parameters["sample_rate"], seg_len=parameters["seg_len"],train=False)
 
     # train_dataset = LibrimixTrainDataset(speech_path="../LibriSpeech/train-clean-100",
     #                                      noise_path="../wham_noise/tr", data_num=parameters["TRAIN_DATA_NUM"],
     #                                      sample_rate=parameters["SAMPLE_RATE"], sameS=parameters["SAMES"],
     #                                      seg_len=parameters["SEG_LEN"], speech_type=parameters["SPEECH_TYPE"], ratio=parameters["RATIO"])
     # val_dataset = LibrimixTrainDataset(speech_path="../LibriSpeech/dev-clean",
-    #                                    noise_path="../wham_noise/cv", train=False,data_num=parameters["VAL_DATA_NUM"],
-    #                                      sample_rate=parameters["SAMPLE_RATE"], sameS=parameters["SAMES"],
-    #                                      seg_len=parameters["SEG_LEN"], speech_type=parameters["SPEECH_TYPE"], ratio=parameters["RATIO"])
+                                    #    noise_path="../wham_noise/cv", train=False,data_num=parameters["VAL_DATA_NUM"],
+                                    #      sample_rate=parameters["SAMPLE_RATE"], sameS=parameters["SAMES"],
+                                    #      seg_len=parameters["SEG_LEN"], speech_type=parameters["SPEECH_TYPE"], ratio=parameters["RATIO"])
 
     train_dataloader = Data.DataLoader(train_dataset, batch_size=parameters["BATCH_SIZE"], shuffle=True,
                                        num_workers=parameters["NUM_WORKERS"])
@@ -240,7 +240,7 @@ if __name__ == '__main__':
         "EPOCH": 100,
         "LR": 0.001,
         "BATCH_SIZE": 16,
-        "PRINT_LOSS_INTERVAL": 62,  # 多少个step打印一次损失
+        "PRINT_LOSS_INTERVAL": 50,  # 多少个step打印一次损失
         "NUM_WORKERS": 8,
         "HALF_LR": True,
         "HALF_LR_EPOCH": 5,
@@ -249,8 +249,8 @@ if __name__ == '__main__':
         "sample_rate": 16000,  # 采样率
         "seg_len": 3,  # 每段语音的长度(秒为单位)
         # 固定数据集路径,如果仅采用单种数据集，另一个数据集留空字符串即可
-        "2s1n_train_path": "",
-        "2s1n_val_path": "",
+        "2s1n_train_path": "/home/photon/Datasets/Libri2Mix/wav16k/both/train-360/",
+        "2s1n_val_path": "/home/photon/Datasets/Libri2Mix/wav16k/both/dev/",
         "1s1n_train_path": "",
         "1s1n_val_path": "",
         # 动态生成数据集参数,使用固定数据集时这里不用管
@@ -260,5 +260,5 @@ if __name__ == '__main__':
         "RATIO": 2,  # num(2s1n)/num(1s1n)
         "SPEECH_TYPE": "1s1n+2s1n",  # 1s1n,2s1n,1s1n+2s1n
     }
-    SAVEPATH = "output/test"
+    SAVEPATH = "output"
     main(parameters, SAVEPATH)
