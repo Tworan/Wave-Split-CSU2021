@@ -1,3 +1,6 @@
+*.onnx
+*.bin
+*.xml
 *.wav
 *.npy
 *.pth
