@@ -200,7 +200,7 @@ def train(train_dataloader, val_dataloader, net, optimizer, loss_func, history, 
                 history['no_imprv_count'] += 1
                 if history['no_imprv_count'] == parameters["HALF_LR_EPOCH"]:
                      optim.param_groups[0]['lr'] =  optim.param_groups[0]['lr'] / 2
-                    no_imprv_count = 0
+                    history['no_imprv_count'] = 0
                     print('-' * 85)
                     print("half learning rate! lr = ",  optim.param_groups[0]['lr'])
                     print('-' * 85)
