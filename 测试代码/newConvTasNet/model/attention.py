@@ -12,9 +12,9 @@ class ChannelAttention(nn.Module):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool1d(1)
         self.max_pool = nn.AdaptiveMaxPool1d(1)
-        self.fc = nn.Sequential(nn.Conv1d(in_chan, in_chan // ratio, 1, bias=False),
+        self.fc = nn.Sequential(nn.Conv1d(in_chan, in_chan // ratio, 1),
                                 nn.ReLU(),
-                                nn.Conv1d(in_chan // ratio, in_chan, 1, bias=False))
+                                nn.Conv1d(in_chan // ratio, in_chan, 1))
 
     def forward(self, x):
         avg_out = self.fc(self.avg_pool(x))
@@ -27,7 +27,7 @@ class ChannelAttention(nn.Module):
 class SpatialAttention(nn.Module):
     def __init__(self, kernel_size=7):
         super(SpatialAttention, self).__init__()
-        self.conv = nn.Conv1d(2, 1, kernel_size, padding=kernel_size // 2, bias=False)
+        self.conv = nn.Conv1d(2, 1, kernel_size, padding=kernel_size // 2)
 
     def forward(self, x):
         """
